@@ -14,11 +14,11 @@ jobs:
         run: |
           echo "label: ${{ inputs.runner-label }}"
           echo "## ls /Applications | grep -i xcode"; ls /Applications | grep -i xcode
-          echo "## xcodes"; (command -v xcodes && xcodes list --installed 2>&1 | head -20) || echo "xcodes not installed"
+          echo "## xcodes"; command -v xcodes || echo "xcodes not installed"
           echo "## xcode-select -p"; xcode-select -p
           echo "## DEVELOPER_DIR=$DEVELOPER_DIR"
           echo "## each Xcode"; for x in /Applications/Xcode*.app; do echo "$x: $(DEVELOPER_DIR=$x/Contents/Developer xcodebuild -version 2>&1 | tr '\n' ' ')"; done
-          echo "## ruby/bundler/make/git"; ruby -v; bundle -v 2>&1; make -v | head -1; cat /Users/runner/.ruby-version 2>/dev/null; command -v rbenv chruby asdf fio || true
+          echo "## ruby/bundler/make/git"; ruby -v; bundle -v 2>&1; make -v | head -1; command -v rbenv chruby asdf fio brew || true
       - name: Memory and CPU sysctl
         run: |
           sysctl hw.memsize hw.l2cachesize hw.l1dcachesize hw.cachelinesize hw.ncpu 2>&1
