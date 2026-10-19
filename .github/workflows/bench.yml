@@ -26,6 +26,7 @@ jobs:
             echo "| kind | run | wall seconds | xcodebuild [N sec] (parsed) |"
             echo "|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
+          echo "## XCODE_XCCONFIG_FILE=$XCODE_XCCONFIG_FILE"; cat "$XCODE_XCCONFIG_FILE" 2>&1 || true
           echo "## cache build settings"
           xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS -showBuildSettings 2>/dev/null | grep -i cache || echo "(no cache-related build settings)"
           xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS -showBuildSettings 2>/dev/null | grep -i COMPILATION_CACHE_ENABLE_CACHING || echo "COMPILATION_CACHE_ENABLE_CACHING: not set"
