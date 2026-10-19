@@ -34,7 +34,8 @@ jobs:
             local rc=$?
             end=$(date +%s)
             local own
-            own=$(grep -Eo 'BUILD SUCCEEDED \*\* \[[0-9.]+ sec\]' "$log" | grep -Eo '[0-9.]+ sec' || echo "FAILED")
+            own=$(grep -E 'BUILD (SUCCEEDED|FAILED)' "$log" | tail -1 | tr -d '*' | xargs)
+            [ -n "$own" ] || own="(no BUILD line) $(tail -1 "$log" | tr '|' '/')"
             echo "| $1 | $2 | $((end-start)) | $own |" | tee -a "$GITHUB_STEP_SUMMARY"
             [ $rc -eq 0 ] || { tail -30 "$log"; exit 1; }
           }
