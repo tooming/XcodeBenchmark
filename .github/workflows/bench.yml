@@ -6,6 +6,11 @@ on:
         description: Runner label (e.g. avrea-macos-26-8-vcpu)
         required: true
         type: string
+      caching:
+        description: on = Avrea defaults, off = all caches disabled
+        type: choice
+        options: [off, on]
+        default: off
 jobs:
   bench:
     runs-on: ${{ inputs.runner-label }}
@@ -21,6 +26,15 @@ jobs:
           if ! xcodebuild -showsdks | grep -q iphoneos; then xcodebuild -downloadPlatform iOS; fi
       - name: Benchmark
         run: |
+          CACHE_FLAG=""
+          if [ "${{ inputs.caching }}" = "off" ]; then
+            unset XCODE_XCCONFIG_FILE
+            unset CCACHE_REMOTE_STORAGE SCCACHE_WEBDAV_ENDPOINT SCCACHE_WEBDAV_KEY_PREFIX BUILD_CACHE_URL BUILD_CACHE_TELEMETRY_ENABLED GOCACHEPROG
+            export CCACHE_DISABLE=1
+            CACHE_FLAG="COMPILATION_CACHE_ENABLE_CACHING=NO"
+          fi
+          echo "caching=${{ inputs.caching }} XCODE_XCCONFIG_FILE='${XCODE_XCCONFIG_FILE}' flag='$CACHE_FLAG'"
+          echo "### caching=${{ inputs.caching }}" >> "$GITHUB_STEP_SUMMARY"
           {
             echo "### ${{ inputs.runner-label }}"
             echo "| kind | run | wall seconds | xcodebuild [N sec] (parsed) |"
@@ -28,13 +42,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "## XCODE_XCCONFIG_FILE=$XCODE_XCCONFIG_FILE"; cat "$XCODE_XCCONFIG_FILE" 2>&1 || true
           echo "## cache build settings"
-          xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS -showBuildSettings 2>/dev/null | grep -i cache || echo "(no cache-related build settings)"
-          xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS -showBuildSettings 2>/dev/null | grep -i COMPILATION_CACHE_ENABLE_CACHING || echo "COMPILATION_CACHE_ENABLE_CACHING: not set"
+          xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS $CACHE_FLAG -showBuildSettings 2>/dev/null | grep -i cache || echo "(no cache-related build settings)"
+          xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS $CACHE_FLAG -showBuildSettings 2>/dev/null | grep -i COMPILATION_CACHE_ENABLE_CACHING || echo "COMPILATION_CACHE_ENABLE_CACHING: not set"
           build() { # kind run dd
             local start end log="$RUNNER_TEMP/log-$1-$2.txt"
             start=$(date +%s)
-            xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark \
-              -destination generic/platform=iOS -derivedDataPath "$3" build > "$log" 2>&1
+            script -q /dev/null xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark \
+              -destination generic/platform=iOS $CACHE_FLAG -derivedDataPath "$3" build > "$log" 2>&1
             local rc=$?
             end=$(date +%s)
             local own
