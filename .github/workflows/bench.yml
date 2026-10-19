@@ -23,9 +23,12 @@ jobs:
         run: |
           {
             echo "### ${{ inputs.runner-label }}"
-            echo "| kind | run | wall seconds | xcodebuild [N sec] |"
+            echo "| kind | run | wall seconds | xcodebuild [N sec] (parsed) |"
             echo "|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
+          echo "## cache build settings"
+          xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS -showBuildSettings 2>/dev/null | grep -i cache || echo "(no cache-related build settings)"
+          xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark -destination generic/platform=iOS -showBuildSettings 2>/dev/null | grep -i COMPILATION_CACHE_ENABLE_CACHING || echo "COMPILATION_CACHE_ENABLE_CACHING: not set"
           build() { # kind run dd
             local start end log="$RUNNER_TEMP/log-$1-$2.txt"
             start=$(date +%s)
@@ -34,9 +37,13 @@ jobs:
             local rc=$?
             end=$(date +%s)
             local own
-            own=$(grep -E 'BUILD (SUCCEEDED|FAILED)' "$log" | tail -1 | tr -d '*' | xargs)
-            [ -n "$own" ] || own="(no BUILD line) $(tail -1 "$log" | tr '|' '/')"
+            own=$(grep -Eo 'BUILD SUCCEEDED \*\* \[[0-9.]+ sec\]' "$log" | tail -1 | grep -Eo '[0-9.]+ sec' || true)
+            [ -n "$own" ] || own="n/a"
             echo "| $1 | $2 | $((end-start)) | $own |" | tee -a "$GITHUB_STEP_SUMMARY"
+            if [ "$1" = clean ]; then
+              echo "--- $1 $2 first 3 lines"; head -3 "$log"
+              echo "--- $1 $2 last 3 lines"; tail -3 "$log"
+            fi
             [ $rc -eq 0 ] || { tail -30 "$log"; exit 1; }
           }
           for i in 1 2 3 4 5; do build clean $i "$RUNNER_TEMP/dd-$i"; done

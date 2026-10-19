@@ -1,0 +1,25 @@
+name: hw
+on:
+  workflow_dispatch:
+    inputs:
+      runner-label:
+        required: true
+        type: string
+jobs:
+  hw:
+    runs-on: ${{ inputs.runner-label }}
+    timeout-minutes: 10
+    steps:
+      - name: Hardware
+        run: |
+          echo "label: ${{ inputs.runner-label }}"
+          echo "## sysctl -n"; sysctl -n machdep.cpu.brand_string hw.model hw.ncpu hw.physicalcpu hw.memsize
+          echo "## perflevels"; sysctl -a | grep -E "hw.perflevel[0-9].(name|physicalcpu|l2cachesize)"
+          echo "## system_profiler"; system_profiler SPHardwareDataType SPDisplaysDataType | head -40
+          echo "## sw_vers"; sw_vers
+          echo "## uname"; uname -a
+          echo "## df"; df -h /
+          echo "## xcode defaults"; defaults read com.apple.dt.Xcode 2>/dev/null | head
+          echo "## env"; env | grep -i -E "cache|ccache|sccache|xcode"
+          echo "## ~/Library/Developer/Xcode"; ls ~/Library/Developer/Xcode 2>/dev/null
+          true
