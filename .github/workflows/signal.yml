@@ -31,7 +31,7 @@ jobs:
           brew install rbenv ruby-build 2>&1 | tail -2
           export PATH="$(brew --prefix rbenv)/bin:$PATH"; eval "$(rbenv init - bash)"
           RUBY_CONFIGURE_OPTS="--with-openssl-dir=$(brew --prefix openssl@3)" rbenv install -s "$(cat .ruby-version)" 2>&1 | tail -3
-          rbenv local "$(cat .ruby-version)"; ruby -v
+          rbenv local "$(cat .ruby-version)"; ruby -v; gem sources --add https://rubygems.org 2>&1 | tail -1; gem sources -l
       - name: make dependencies (untimed)
         run: |
           unset XCODE_XCCONFIG_FILE CCACHE_REMOTE_STORAGE SCCACHE_WEBDAV_ENDPOINT SCCACHE_WEBDAV_KEY_PREFIX BUILD_CACHE_URL GOCACHEPROG
@@ -39,6 +39,7 @@ jobs:
       - name: bundle install (untimed)
         run: |
           export PATH="$(brew --prefix rbenv)/bin:$PATH"; eval "$(rbenv init - bash)"
+          gem sources --add https://rubygems.org 2>&1 | tail -1
           bundle config path vendor/bundle
           s=$(date +%s); bundle install --jobs 4 --retry 3 2>&1 | tail -5; echo "bundle install: $(( $(date +%s)-s )) s"
       - name: Timed scan x runs, memory sampled

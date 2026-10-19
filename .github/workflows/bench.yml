@@ -6,6 +6,19 @@ on:
         description: Runner label (e.g. avrea-macos-26-8-vcpu)
         required: true
         type: string
+      jobs:
+        description: extra xcodebuild -jobs N (empty = default)
+        required: false
+        type: string
+        default: ''
+      cleans:
+        required: false
+        type: string
+        default: '5'
+      incrs:
+        required: false
+        type: string
+        default: '5'
       caching:
         description: on = Avrea defaults, off = all caches disabled
         type: choice
@@ -27,13 +40,14 @@ jobs:
       - name: Benchmark
         run: |
           CACHE_FLAG=""
+          JOBS_FLAG=""; [ -n "${{ inputs.jobs }}" ] && JOBS_FLAG="-jobs ${{ inputs.jobs }}"
           if [ "${{ inputs.caching }}" = "off" ]; then
             unset XCODE_XCCONFIG_FILE
             unset CCACHE_REMOTE_STORAGE SCCACHE_WEBDAV_ENDPOINT SCCACHE_WEBDAV_KEY_PREFIX BUILD_CACHE_URL BUILD_CACHE_TELEMETRY_ENABLED GOCACHEPROG
             export CCACHE_DISABLE=1
             CACHE_FLAG="COMPILATION_CACHE_ENABLE_CACHING=NO"
           fi
-          echo "caching=${{ inputs.caching }} XCODE_XCCONFIG_FILE='${XCODE_XCCONFIG_FILE}' flag='$CACHE_FLAG'"
+          echo "jobs_flag='$JOBS_FLAG' cleans=${{ inputs.cleans }} incrs=${{ inputs.incrs }}"; echo "caching=${{ inputs.caching }} XCODE_XCCONFIG_FILE='${XCODE_XCCONFIG_FILE}' flag='$CACHE_FLAG'"
           echo "### caching=${{ inputs.caching }}" >> "$GITHUB_STEP_SUMMARY"
           {
             echo "### ${{ inputs.runner-label }}"
@@ -48,7 +62,7 @@ jobs:
             local start end log="$RUNNER_TEMP/log-$1-$2.txt"
             start=$(date +%s)
             script -q /dev/null xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark \
-              -destination generic/platform=iOS $CACHE_FLAG -derivedDataPath "$3" build > "$log" 2>&1
+              -destination generic/platform=iOS $CACHE_FLAG $JOBS_FLAG -derivedDataPath "$3" build > "$log" 2>&1
             local rc=$?
             end=$(date +%s)
             local own
@@ -61,8 +75,8 @@ jobs:
             fi
             [ $rc -eq 0 ] || { tail -30 "$log"; exit 1; }
           }
-          for i in 1 2 3 4 5; do build clean $i "$RUNNER_TEMP/dd-$i"; done
-          for i in 1 2 3 4 5; do
+          for i in $(seq 1 ${{ inputs.cleans }}); do build clean $i "$RUNNER_TEMP/dd-$i"; done
+          for i in $(seq 1 ${{ inputs.incrs }}); do
             touch Source/EnvironmentCheck.swift
             build incremental $i "$RUNNER_TEMP/dd-5"
           done
