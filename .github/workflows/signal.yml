@@ -43,6 +43,7 @@ jobs:
           s=$(date +%s); bundle install --jobs 4 --retry 3 2>&1 | tail -5; echo "bundle install: $(( $(date +%s)-s )) s"
       - name: Timed scan x runs, memory sampled
         run: |
+          set +e
           export PATH="$(brew --prefix rbenv)/bin:$PATH"; eval "$(rbenv init - bash)"
           unset XCODE_XCCONFIG_FILE CCACHE_REMOTE_STORAGE SCCACHE_WEBDAV_ENDPOINT SCCACHE_WEBDAV_KEY_PREFIX BUILD_CACHE_URL GOCACHEPROG
           export CCACHE_DISABLE=1
@@ -61,7 +62,7 @@ jobs:
             bundle exec fastlane scan --scheme Signal --output_types junit --skip_package_dependencies_resolution --disable_package_automatic_updates --derived_data_path "$RUNNER_TEMP/dd-signal-$i" --xcargs "-test-timeouts-enabled YES -maximum-test-execution-time-allowance 60 COMPILATION_CACHE_ENABLE_CACHING=NO" > "$RUNNER_TEMP/scan-$i.log" 2>&1
             rc=$?; e=$(date +%s)
             echo "| $i | $((e-s)) | $rc |" | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "--- run $i: first 5 lines"; head -5 "$RUNNER_TEMP/scan-$i.log"; echo "--- last 25 lines"; tail -25 "$RUNNER_TEMP/scan-$i.log"
+            echo "--- run $i: first 8 lines"; head -8 "$RUNNER_TEMP/scan-$i.log"; echo "--- last 40 lines"; tail -40 "$RUNNER_TEMP/scan-$i.log"
             vm_stat | head -4; sysctl vm.swapusage
           done
           kill $SAMP
