@@ -9,8 +9,8 @@ on:
       caching:
         description: on = Avrea defaults, off = all caches disabled
         type: choice
-        options: [off, on]
-        default: off
+        options: ['off', 'on']
+        default: 'off'
 jobs:
   bench:
     runs-on: ${{ inputs.runner-label }}
