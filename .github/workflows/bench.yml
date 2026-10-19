@@ -1,0 +1,45 @@
+name: bench
+on:
+  workflow_dispatch:
+    inputs:
+      runner-label:
+        description: Runner label (e.g. avrea-macos-26-8-vcpu)
+        required: true
+        type: string
+jobs:
+  bench:
+    runs-on: ${{ inputs.runner-label }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hardware
+        run: |
+          echo "label: ${{ inputs.runner-label }}"
+          sw_vers; sysctl hw.model hw.ncpu hw.memsize; xcodebuild -version
+      - name: Ensure iOS platform (untimed)
+        run: |
+          if ! xcodebuild -showsdks | grep -q iphoneos; then xcodebuild -downloadPlatform iOS; fi
+      - name: Benchmark
+        run: |
+          {
+            echo "### ${{ inputs.runner-label }}"
+            echo "| kind | run | wall seconds | xcodebuild [N sec] |"
+            echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          build() { # kind run dd
+            local start end log="$RUNNER_TEMP/log-$1-$2.txt"
+            start=$(date +%s)
+            xcodebuild -workspace XcodeBenchmark.xcworkspace -scheme XcodeBenchmark \
+              -destination generic/platform=iOS -derivedDataPath "$3" build > "$log" 2>&1
+            local rc=$?
+            end=$(date +%s)
+            local own
+            own=$(grep -Eo 'BUILD SUCCEEDED \*\* \[[0-9.]+ sec\]' "$log" | grep -Eo '[0-9.]+ sec' || echo "FAILED")
+            echo "| $1 | $2 | $((end-start)) | $own |" | tee -a "$GITHUB_STEP_SUMMARY"
+            [ $rc -eq 0 ] || { tail -30 "$log"; exit 1; }
+          }
+          for i in 1 2 3 4 5; do build clean $i "$RUNNER_TEMP/dd-$i"; done
+          for i in 1 2 3 4 5; do
+            touch Source/EnvironmentCheck.swift
+            build incremental $i "$RUNNER_TEMP/dd-5"
+          done
