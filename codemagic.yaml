@@ -1,6 +1,6 @@
 # Runs XcodeBenchmark on a build VM of the home DC (mihkel.skoor.ee). The gateway's runner reads this file inside the VM.
 workflows:
-  xcode-benchmark:
+  ios-build:
     name: XcodeBenchmark
     instance_type: mac_mini_m2
     max_build_duration: 30
